@@ -1,0 +1,9 @@
+* {
+  margin: 0;
+  padding: 0;
+}
+#app {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+}
