@@ -1,5 +1,5 @@
 import * as echarts from 'echarts';
-import { LineSeriesOption, RegisteredSeriesOption, YAXisOption } from 'echarts/types/dist/shared.js';
+import { YAXisOption } from 'echarts/types/dist/shared.js';
 
 type EChartsOption = echarts.EChartsOption;
 type LoadedData = {
@@ -18,11 +18,21 @@ async function main() {
 function initChart() {
   chartDom = document.getElementById('app')!;
   myChart = echarts.init(chartDom);
+
+  window.addEventListener('resize', () => {
+    myChart.resize();
+    const chartWidth = myChart.getWidth();
+    console.log(chartWidth);
+    const thumbnailsContainer = document.querySelector<HTMLElement>('.thumbnails-container');
+    thumbnailsContainer!.style.width = `${chartWidth - 480}px`;
+  });
 }
 
 async function prepareData() {
   // Load /data.json
   const responsedData: LoadedData = await (await fetch('/data.json')).json();
+
+  const yAxisOffsetDiff = 80;
 
   // Build echart option
   const speedRecords = generateRecords(responsedData.timestamp, 0, 100, 5);
@@ -39,7 +49,7 @@ async function prepareData() {
     { name: 'Acc Y', min: -3, max: 3, formatter: (value) => `${Math.round(value * 100) / 100} g` },
     { name: 'Temperature', min: 0, max: 50, formatter: (value) => `${Math.round(value * 100) / 100} ℃` },
     { name: 'Humidity', min: 0, max: 100, formatter: (value) => `${Math.round(value * 100) / 100} %` },
-  ]);
+  ], yAxisOffsetDiff);
 
   option = {
     legend: {
@@ -63,12 +73,13 @@ async function prepareData() {
     },
     title: {
       top: '3%',
-      left: 'center',
+      left: '2%',
       text: 'Chart with Timeline Thumbnails'
     },
     grid: {
       top: '10%',
-      right: '40%'
+      right: `${yAxis.length * yAxisOffsetDiff}px`,
+      left: '2%'
     },
     toolbox: {
       feature: {
@@ -142,7 +153,7 @@ function generateRecords(timestamps: string[], lowerBound: number, upperBound: n
   return data;
 }
 
-function generateYAxisList(axisList: { name: string, min: number, max: number, formatter: (value: number) => string }[], offsetDiff = 80): YAXisOption[] {
+function generateYAxisList(axisList: { name: string, min: number, max: number, formatter: (value: number) => string }[], offsetDiff = 50): YAXisOption[] {
   const yAxisList: YAXisOption[] = axisList.map((axis, index) => {
     const option: YAXisOption = {
       type: 'value',
@@ -155,7 +166,7 @@ function generateYAxisList(axisList: { name: string, min: number, max: number, f
       },
       axisPointer: {
         label: {
-          precision: 4
+          precision: 3
         }
       },
       offset: index * offsetDiff,

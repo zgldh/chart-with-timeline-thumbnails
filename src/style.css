@@ -2,8 +2,32 @@
   margin: 0;
   padding: 0;
 }
+.main{ 
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
 #app {
-  position: relative;
-  height: 100vh;
+  position: relative; 
   overflow: hidden;
+  flex:1;
+}
+
+.thumbnails-container{
+  margin-left: 2%;
+  margin-right: 480px;
+  margin-top: 10px; 
+  height: 100px;
+  display: flex;
+  flex-direction: row;
+  box-shadow: 1px 1px 5px black;
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+
+.thumbnail-item{
+  height: 100%;
+}
+.thumbnail-item img{
+  height: 100%;
 }
