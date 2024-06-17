@@ -74,11 +74,10 @@ function debounceHighlight(callback: { (): void; (): void; (): void; }) {
     callback();
   }, 50);
 }
-function showTargetThumbnail(attr: { batch: { dataIndex: number; }[]; }) {
+function showTargetThumbnail(batch: { dataIndex: number; }) {
   if (mouseoveringThumbnailsRow) {
     return;
   }
-  const batch = attr?.batch[0];
   if (!batch) {
     return;
   }
@@ -104,7 +103,6 @@ function showTargetThumbnail(attr: { batch: { dataIndex: number; }[]; }) {
   }
 
   targetThumbnailContainer.style.left = `${Math.min(x, thumbnailsContainer.clientWidth - thumbnailWidth)}px`;
-  console.log('showTargetThumbnail', attr);
 }
 
 function removeTargetThumbnail() {
@@ -223,7 +221,7 @@ function renderImages(urls: ThumbnailUrl[]) {
 
 async function prepareData() {
   // Load /data.json
-  responsedData = await (await fetch('/data.json')).json();
+  responsedData = await (await fetch('./data.json')).json();
 
   const yAxisOffsetDiff = 80;
 
