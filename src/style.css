@@ -2,32 +2,60 @@
   margin: 0;
   padding: 0;
 }
-.main{ 
+
+.main {
   height: 90vh;
   display: flex;
   flex-direction: column;
 }
+
 #app {
-  position: relative; 
+  position: relative;
   overflow: hidden;
-  flex:1;
+  flex: 1;
 }
 
-.thumbnails-container{
+#thumbnails-container {
+  position: relative;
   margin-left: 2%;
   margin-right: 480px;
-  margin-top: 10px; 
+  margin-top: 10px;
   height: 100px;
   display: flex;
   flex-direction: row;
-  box-shadow: 1px 1px 5px black;
+  box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.5);
   overflow-x: hidden;
   overflow-y: hidden;
 }
 
-.thumbnail-item{
-  height: 100%;
+#thumbnails-container.showing-target #thumbnails-row {
+  opacity: 0.5;
 }
-.thumbnail-item img{
+
+.thumbnail-item {
   height: 100%;
+  margin-right: 1px;
+}
+
+#thumbnails-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#thumbnails-empty span {
+  padding: 1em;
+}
+
+.thumbnail-item img {
+  height: 100%;
+  position: relative;
+}
+
+.target-thumbnail {
+  position: absolute;
+}
+
+.target-thumbnail img {
+  box-shadow: 0px 0px 2px 2px white;
 }

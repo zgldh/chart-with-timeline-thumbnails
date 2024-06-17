@@ -1,36 +1,229 @@
 import * as echarts from 'echarts';
-import { YAXisOption } from 'echarts/types/dist/shared.js';
+import { InsideDataZoomOption, YAXisOption } from 'echarts/types/dist/shared.js';
+import { DataZoomOption } from 'echarts/types/src/component/dataZoom/DataZoomModel.js';
 
 type EChartsOption = echarts.EChartsOption;
 type LoadedData = {
   timestamp: string[];
 }
+type ThumbnailUrl = {
+  timestamp: string;
+  url: string;
+}
 
-var chartDom: HTMLElement;
-var myChart: echarts.ECharts;
-var option: EChartsOption;
+let responsedData: LoadedData;
+let chartDom: HTMLElement;
+let targetThumbnailContainer: HTMLDivElement | null;
+let thumbnailsContainer: HTMLElement;
+let thumbnailsRow: HTMLElement;
+let thumbnailsEmpty: HTMLElement;
+let myChart: echarts.ECharts;
+let option: EChartsOption;
+let thumbnailWidth = 178;
+let mouseoveringThumbnailsRow = false;
 async function main() {
   initChart();
   await prepareData();
   renderChart();
+
+  updateThumbnailContainer();
+  delegateThumbnailHover();
 }
 
 function initChart() {
   chartDom = document.getElementById('app')!;
+  thumbnailsContainer = document.getElementById('thumbnails-container')!;
+  thumbnailsRow = document.getElementById('thumbnails-row')!;
+  thumbnailsEmpty = document.getElementById('thumbnails-empty')!;
+
+  thumbnailsRow.style.display = 'none';
+  thumbnailsEmpty.style.display = 'none';
+
   myChart = echarts.init(chartDom);
+
+  myChart.on('datazoom', (attr) => {
+    updateThumbnailContainer();
+  });
+  myChart.on('highlight', (attr) => {
+    debounceHighlight(() => showTargetThumbnail(attr));
+  });
+
+  myChart.on('downplay', (attr) => {
+    debounceHighlight(() => removeTargetThumbnail(attr));
+  });
 
   window.addEventListener('resize', () => {
     myChart.resize();
-    const chartWidth = myChart.getWidth();
-    console.log(chartWidth);
-    const thumbnailsContainer = document.querySelector<HTMLElement>('.thumbnails-container');
-    thumbnailsContainer!.style.width = `${chartWidth - 480}px`;
   });
+}
+
+function updateThumbnailContainer() {
+  const options = myChart.getOption();
+  const dataZoom: InsideDataZoomOption | undefined = (options.dataZoom as InsideDataZoomOption[]).find(item => item.type == "inside");
+  if (!dataZoom) {
+    return;
+  }
+  const thumbnails = getThumbnailsFromRange(dataZoom.startValue || 0, dataZoom.endValue || Number.MAX_SAFE_INTEGER);
+  const htmlImageElements: HTMLImageElement[] = renderImages(thumbnails);
+}
+
+function debounceHighlight(callback: { (): void; (): void; (): void; }) {
+  if (debounceHighlight.prototype.handle) {
+    clearTimeout(debounceHighlight.prototype.handle);
+  }
+  debounceHighlight.prototype.handle = setTimeout(() => {
+    callback();
+  }, 50);
+}
+function showTargetThumbnail(attr) {
+  if (mouseoveringThumbnailsRow) {
+    return;
+  }
+  const batch = attr?.batch[0];
+  if (!batch) {
+    return;
+  }
+  const timestamp = responsedData.timestamp[batch.dataIndex];
+  let x = myChart.convertToPixel({
+    xAxisIndex: 0
+  }, timestamp);
+  x -= window.innerWidth * 0.02;
+  const url = getThumbnailUrlByTimestamp(timestamp);
+  if (targetThumbnailContainer) {
+    const img = targetThumbnailContainer.children.item(0);
+    if (img) {
+      img.setAttribute('src', url);
+      img.setAttribute('alt', timestamp);
+      img.setAttribute('title', timestamp);
+      img.setAttribute('data-timestamp', timestamp);
+    }
+  } else {
+    targetThumbnailContainer = createDivImg(timestamp, url);
+    targetThumbnailContainer.classList.add('target-thumbnail');
+    thumbnailsContainer.classList.add('showing-target');
+    thumbnailsContainer.appendChild(targetThumbnailContainer);
+  }
+
+  targetThumbnailContainer.style.left = `${Math.min(x, thumbnailsContainer.clientWidth - thumbnailWidth)}px`;
+  console.log('showTargetThumbnail', attr);
+}
+
+function removeTargetThumbnail(attr) {
+  thumbnailsContainer.removeChild(targetThumbnailContainer);
+  thumbnailsContainer.classList.remove('showing-target');
+  targetThumbnailContainer = null;
+  console.log('removeTargetThumbnail', attr);
+}
+
+function delegateThumbnailHover() {
+  thumbnailsRow.addEventListener('mouseover', (e) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName == 'IMG') {
+      mouseoveringThumbnailsRow = true;
+      const img = target as HTMLImageElement;
+      const timestamp = img.getAttribute('data-timestamp');
+      if (timestamp) {
+        // Move cursor of the echarts to the target timestamp
+        const x = myChart.convertToPixel({
+          xAxisIndex: 0
+        }, timestamp);
+        myChart.setOption({ tooltip: { axisPointer: { type: 'line' } } });
+        myChart.dispatchAction({
+          type: 'showTip',
+          x: x,
+          y: 80,
+          axisPointer: {
+            type: 'line'
+          },
+          position: (pt: any[]) => {
+            return [pt[0], '10%'];
+          }
+        });
+        myChart.setOption({ tooltip: { axisPointer: { type: 'cross' } } });
+      }
+    }
+  });
+  thumbnailsRow.addEventListener('mouseout', (e) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName == 'IMG') {
+      mouseoveringThumbnailsRow = false;
+    }
+  });
+}
+
+function getThumbnailUrlByTimestamp(timestamp: string | number | Date) {
+  const date = new Date(timestamp);
+  return `/frames/f-${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}-${date.getHours().toString().padStart(2, '0')}-${date.getMinutes().toString().padStart(2, '0')}-${date.getSeconds().toString().padStart(2, '0')}.jpg`;
+}
+
+function getThumbnailsFromRange(startValue: string | number | Date, endValue: string | number | Date): ThumbnailUrl[] {
+  const startDate = new Date(startValue);
+  const endDate = new Date(endValue);
+  const urls = responsedData.timestamp
+    .map(item => ({ timstamp: item, date: new Date(item) }))
+    .filter(item => {
+      return startDate <= item.date && item.date <= endDate;
+    })
+    .map(item => {
+      const url = getThumbnailUrlByTimestamp(item.date);
+      return {
+        timestamp: item.timstamp,
+        url: url
+      };
+    });
+  return urls;
+}
+
+function createDivImg(timestamp: string, url: string) {
+  const container = document.createElement('div');
+  container.className = 'thumbnail-item';
+  const image = new Image();
+  image.src = url;
+  image.alt = timestamp;
+  image.setAttribute('data-timestamp', timestamp);
+  image.title = timestamp;
+  container.appendChild(image);
+  return container;
+}
+
+function renderImages(urls: ThumbnailUrl[]) {
+  for (var i = thumbnailsRow.children.length; i > 0; i--) {
+    thumbnailsRow.removeChild(thumbnailsRow.childNodes.item(0));
+  }
+
+  if (urls.length <= 0) {
+    thumbnailsRow.style.display = 'none';
+    thumbnailsEmpty.style.display = 'flex';
+  }
+  thumbnailsRow.style.display = 'flex';
+  thumbnailsEmpty.style.display = 'none';
+  let filledWidth = 0;
+  let filledUrls = 0;
+  let totalWidth = thumbnailsContainer.clientWidth;
+  let totalUrls = urls.length;
+  const images = urls.map(url => {
+    if ((filledUrls / totalUrls) * totalWidth < filledWidth) {
+      filledUrls += 1;
+      return null;
+    }
+
+    const container = createDivImg(url.timestamp, url.url);
+
+    filledWidth += thumbnailWidth;
+    filledUrls += 1;
+
+    return container;
+  }).forEach(image => {
+    if (image) {
+      thumbnailsRow.appendChild(image);
+    }
+  });
+  return images;
 }
 
 async function prepareData() {
   // Load /data.json
-  const responsedData: LoadedData = await (await fetch('/data.json')).json();
+  responsedData = await (await fetch('/data.json')).json();
 
   const yAxisOffsetDiff = 80;
 
