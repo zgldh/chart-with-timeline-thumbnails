@@ -153,7 +153,7 @@ function delegateThumbnailHover() {
 
 function getThumbnailUrlByTimestamp(timestamp: string | number | Date) {
   const date = new Date(timestamp);
-  return `/frames/f-${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}-${date.getHours().toString().padStart(2, '0')}-${date.getMinutes().toString().padStart(2, '0')}-${date.getSeconds().toString().padStart(2, '0')}.jpg`;
+  return `./frames/f-${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}-${date.getHours().toString().padStart(2, '0')}-${date.getMinutes().toString().padStart(2, '0')}-${date.getSeconds().toString().padStart(2, '0')}.jpg`;
 }
 
 function getThumbnailsFromRange(startValue: string | number | Date, endValue: string | number | Date): ThumbnailUrl[] {
