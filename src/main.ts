@@ -1,6 +1,5 @@
 import * as echarts from 'echarts';
 import { InsideDataZoomOption, YAXisOption } from 'echarts/types/dist/shared.js';
-import { DataZoomOption } from 'echarts/types/src/component/dataZoom/DataZoomModel.js';
 
 type EChartsOption = echarts.EChartsOption;
 type LoadedData = {
@@ -41,15 +40,15 @@ function initChart() {
 
   myChart = echarts.init(chartDom);
 
-  myChart.on('datazoom', (attr) => {
+  myChart.on('datazoom', () => {
     updateThumbnailContainer();
   });
-  myChart.on('highlight', (attr) => {
-    debounceHighlight(() => showTargetThumbnail(attr));
+  myChart.on('highlight', (attr: any) => {
+    debounceHighlight(() => showTargetThumbnail(attr?.batch[0]));
   });
 
-  myChart.on('downplay', (attr) => {
-    debounceHighlight(() => removeTargetThumbnail(attr));
+  myChart.on('downplay', () => {
+    debounceHighlight(() => removeTargetThumbnail());
   });
 
   window.addEventListener('resize', () => {
@@ -64,7 +63,7 @@ function updateThumbnailContainer() {
     return;
   }
   const thumbnails = getThumbnailsFromRange(dataZoom.startValue || 0, dataZoom.endValue || Number.MAX_SAFE_INTEGER);
-  const htmlImageElements: HTMLImageElement[] = renderImages(thumbnails);
+  renderImages(thumbnails);
 }
 
 function debounceHighlight(callback: { (): void; (): void; (): void; }) {
@@ -75,7 +74,7 @@ function debounceHighlight(callback: { (): void; (): void; (): void; }) {
     callback();
   }, 50);
 }
-function showTargetThumbnail(attr) {
+function showTargetThumbnail(attr: { batch: { dataIndex: number; }[]; }) {
   if (mouseoveringThumbnailsRow) {
     return;
   }
@@ -108,11 +107,12 @@ function showTargetThumbnail(attr) {
   console.log('showTargetThumbnail', attr);
 }
 
-function removeTargetThumbnail(attr) {
-  thumbnailsContainer.removeChild(targetThumbnailContainer);
+function removeTargetThumbnail() {
+  if (targetThumbnailContainer) {
+    thumbnailsContainer.removeChild(targetThumbnailContainer);
+    targetThumbnailContainer = null;
+  }
   thumbnailsContainer.classList.remove('showing-target');
-  targetThumbnailContainer = null;
-  console.log('removeTargetThumbnail', attr);
 }
 
 function delegateThumbnailHover() {
@@ -392,7 +392,4 @@ function renderChart() {
   option && myChart.setOption(option);
 }
 
-
-
-
-await main();
+main();
